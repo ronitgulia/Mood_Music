@@ -34,8 +34,8 @@ FACE_PROTO_URL = (
     "samples/dnn/face_detector/opencv_face_detector.pbtxt"
 )
 FACE_MODEL_URL = (
-    "https://github.com/opencv/opencv_3rdparty/raw/"
-    "dnn_samples_face_detector_20170830/opencv_face_detector_uint8.pb"
+    "https://raw.githubusercontent.com/opencv/opencv_3rdparty/"
+    "dnn_samples_face_detector_20180220_uint8/opencv_face_detector_uint8.pb"
 )
 FACE_PROTO_PATH = "face_detector.pbtxt"
 FACE_MODEL_PATH = "face_detector.pb"
@@ -61,12 +61,12 @@ LABEL_MAP = {
 def _download_file(url: str, path: str, label: str) -> None:
     """Download a file if it doesn't already exist locally."""
     if not os.path.exists(path):
-        print(f"📥 Downloading {label}...")
+        print(f"[>] Downloading {label}...")
         try:
             urllib.request.urlretrieve(url, path)
-            print(f"✅ {label} downloaded!")
+            print(f"[OK] {label} downloaded!")
         except Exception as e:
-            print(f"❌ Failed to download {label}: {e}")
+            print(f"[ERR] Failed to download {label}: {e}")
             raise
 
 
@@ -110,7 +110,7 @@ class EmotionEngine:
         self._net = cv2.dnn.readNetFromONNX(MODEL_PATH)
         self._face_net = cv2.dnn.readNetFromTensorflow(FACE_MODEL_PATH, FACE_PROTO_PATH)
 
-        print("✅ Emotion engine ready!")
+        print("[OK] Emotion engine ready!")
 
     # ── Public API ────────────────────────────────────────────────────────────
 
