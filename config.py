@@ -6,25 +6,57 @@
 # Description: All settings and song configurations
 # ─────────────────────────────────────────────
 
-CONFIDENCE_THRESHOLD = 50
-CONFIRM_COUNT_NEEDED = 3
-SONG_COOLDOWN_SECONDS = 120
-ANALYSIS_INTERVAL = 0.5
-MOOD_LOG_FILE = "mood_log.csv"
-VOICE_ENABLED = True
-HISTORY_DISPLAY = 15
+# ── Detection thresholds ──────────────────────────────────────────────────────
+CONFIDENCE_THRESHOLD: int = 40        # Min smoothed confidence (%) to accept a result
+ANALYSIS_INTERVAL: float = 0.35       # Seconds between analysis frames (was 0.5)
 
-EMOTION_COLORS = {
-    "happy":   "#FFD700",
-    "sad":     "#4A90D9",
-    "angry":   "#FF4444",
-    "neutral": "#888888",
-    "surprise":"#FF69B4",
-    "fear":    "#9B59B6",
-    "disgust": "#27AE60",
+# ── Temporal smoothing (EMA) ──────────────────────────────────────────────────
+SMOOTHING_ALPHA: float = 0.35         # EMA weight: higher = more reactive, lower = smoother
+
+# ── Voting-window confirmation ────────────────────────────────────────────────
+VOTE_WINDOW: int = 8                  # Number of recent predictions to vote over
+VOTE_THRESHOLD: float = 0.60         # Fraction of votes needed to confirm an emotion
+
+# ── Logging & history ─────────────────────────────────────────────────────────
+MOOD_LOG_FILE: str = "mood_log.csv"
+HISTORY_DISPLAY: int = 15
+LOG_BUFFER_SIZE: int = 5             # Write to CSV after this many buffered entries
+
+# ── Voice ─────────────────────────────────────────────────────────────────────
+VOICE_ENABLED: bool = True
+
+# ── Per-emotion song cooldowns (seconds) ─────────────────────────────────────
+# Different emotions get different cooldowns — angry/fear/surprise can
+# switch sooner; neutral waits longer.
+EMOTION_COOLDOWNS: dict = {
+    "happy":    120,
+    "sad":      150,
+    "angry":     90,
+    "neutral":  180,
+    "surprise":  60,
+    "fear":     120,
+    "disgust":  120,
+}
+SONG_COOLDOWN_SECONDS: int = 120     # Fallback if emotion not in EMOTION_COOLDOWNS
+
+# ── Mood shift bypass ─────────────────────────────────────────────────────────
+# If the new emotion is >= this many priority levels away from the current one,
+# skip the cooldown and play immediately (e.g. neutral → angry).
+MOOD_SHIFT_BYPASS_THRESHOLD: int = 3
+
+# ── Emotion colours (used by GUI) ─────────────────────────────────────────────
+EMOTION_COLORS: dict = {
+    "happy":    "#FFD700",
+    "sad":      "#4A90D9",
+    "angry":    "#FF4444",
+    "neutral":  "#888888",
+    "surprise": "#FF69B4",
+    "fear":     "#9B59B6",
+    "disgust":  "#27AE60",
 }
 
-MOOD_SONGS = {
+# ── Song library ──────────────────────────────────────────────────────────────
+MOOD_SONGS: dict = {
     "happy": [
         "https://www.youtube.com/watch?v=2edFgRpgisk&list=RD2edFgRpgisk&start_radio=1",   # Good Luck Charm - Aman Hayer
         "https://www.youtube.com/watch?v=Dl_n2_ekfN4&list=RDDl_n2_ekfN4&start_radio=1",   # Midnight Call - Harkirat Sangha
