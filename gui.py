@@ -140,6 +140,12 @@ class MoodMusicApp(QMainWindow):
         self._prev_confidence: float = 0.0
 
         self.cap = cv2.VideoCapture(0)
+        self._camera_lock = threading.Lock()
+        self._latest_frame = None
+        self._camera_running = True
+        self._camera_thread = threading.Thread(target=self._camera_worker, daemon=True)
+        self._camera_thread.start()
+
         self._build_ui()
 
         self.timer = QTimer()
@@ -319,12 +325,26 @@ class MoodMusicApp(QMainWindow):
                     pass
         threading.Thread(target=_do, daemon=True).start()
 
+    # ── Camera Worker ─────────────────────────────────────────────────────────
+
+    def _camera_worker(self):
+        import time
+        while self._camera_running:
+            ret, frame = self.cap.read()
+            if ret:
+                with self._camera_lock:
+                    self._latest_frame = frame.copy()
+            else:
+                time.sleep(0.01)
+
     # ── Main GUI loop (30 fps) ────────────────────────────────────────────────
 
     def _loop(self):
-        ret, frame = self.cap.read()
-        if not ret:
+        with self._camera_lock:
+            frame = self._latest_frame
+        if frame is None:
             return
+        frame = frame.copy()
 
         self.engine.maybe_analyze(frame)
         latest = self.engine.latest
@@ -384,16 +404,22 @@ class MoodMusicApp(QMainWindow):
 
     def _quit(self):
         self.timer.stop()
+        self._camera_running = False
         self.engine.shutdown()      # Gracefully stop thread pool
         self.logger.flush()         # Flush any buffered log entries
+        if self._camera_thread.is_alive():
+            self._camera_thread.join(timeout=1.0)
         self.cap.release()
         self.close()
 
     def closeEvent(self, event):
         """Also handle window close button (×)."""
         self.timer.stop()
+        self._camera_running = False
         self.engine.shutdown()
         self.logger.flush()
+        if self._camera_thread.is_alive():
+            self._camera_thread.join(timeout=1.0)
         self.cap.release()
         event.accept()
 
