@@ -87,6 +87,8 @@ class EmotionEngine:
         self._last_time: float = 0.0
         self._smoothed_scores: dict = {e: 0.0 for e in EMOTIONS}
 
+        self._is_ready = False
+
         # ThreadPoolExecutor — reuses threads, no per-frame spawn overhead
         self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="emotion")
 
@@ -98,19 +100,30 @@ class EmotionEngine:
             "scores": {e: 0.0 for e in EMOTIONS},
             "confidence": 0.0,
             "face_box": None,
-            "status": "Ready! Show your face 😊",
+            "status": "Initializing models... Please wait.",
             "vote_fill": 0,     # 0-100, used by GUI progress bar
         }
 
-        # Download & load models
-        _download_file(MODEL_URL, MODEL_PATH, "Emotion ONNX model")
-        _download_file(FACE_PROTO_URL, FACE_PROTO_PATH, "Face detector config")
-        _download_file(FACE_MODEL_URL, FACE_MODEL_PATH, "Face detector model")
+        # Load models in a background thread to prevent UI freezing
+        threading.Thread(target=self._load_models_async, daemon=True).start()
 
-        self._net = cv2.dnn.readNetFromONNX(MODEL_PATH)
-        self._face_net = cv2.dnn.readNetFromTensorflow(FACE_MODEL_PATH, FACE_PROTO_PATH)
+    def _load_models_async(self):
+        try:
+            _download_file(MODEL_URL, MODEL_PATH, "Emotion ONNX model")
+            _download_file(FACE_PROTO_URL, FACE_PROTO_PATH, "Face detector config")
+            _download_file(FACE_MODEL_URL, FACE_MODEL_PATH, "Face detector model")
 
-        print("[OK] Emotion engine ready!")
+            self._net = cv2.dnn.readNetFromONNX(MODEL_PATH)
+            self._face_net = cv2.dnn.readNetFromTensorflow(FACE_MODEL_PATH, FACE_PROTO_PATH)
+            
+            with self._lock:
+                self.latest["status"] = "Ready! Show your face 😊"
+                self._is_ready = True
+            print("[OK] Emotion engine ready!")
+        except Exception as e:
+            with self._lock:
+                self.latest["status"] = f"Failed to load models: {str(e)[:60]}"
+            print(f"[ERR] Model load failed: {e}")
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -118,7 +131,7 @@ class EmotionEngine:
         """Called every GUI tick. Submits analysis job if interval elapsed."""
         now = time.time()
         with self._lock:
-            if self._analyzing:
+            if not self._is_ready or self._analyzing:
                 return
             if now - self._last_time < ANALYSIS_INTERVAL:
                 return
