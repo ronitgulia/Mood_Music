@@ -10,39 +10,46 @@ import csv
 import os
 import threading
 from datetime import datetime
+from collections import deque
 from config import MOOD_LOG_FILE, HISTORY_DISPLAY, LOG_BUFFER_SIZE
 
 
 class MoodLogger:
     """
     Thread-safe CSV logger with write buffering.
-
-    Improvement over v1:
-      - Buffers LOG_BUFFER_SIZE entries in memory before writing.
-      - Single file open per flush instead of per log entry.
-      - Explicit flush() for graceful app shutdown.
+    
+    Fix: History is now cached in memory to avoid O(N) disk I/O
+    in the UI loop.
     """
 
     def __init__(self):
         self._file: str = MOOD_LOG_FILE
         self._buffer: list = []
         self._lock = threading.Lock()
+        self._history = deque(maxlen=HISTORY_DISPLAY)
 
         if not os.path.exists(self._file):
             with open(self._file, "w", newline="", encoding="utf-8") as f:
                 csv.writer(f).writerow(["time", "emotion", "confidence"])
+        else:
+            with open(self._file, "r", encoding="utf-8") as f:
+                rows = list(csv.DictReader(f))
+                for row in rows[-HISTORY_DISPLAY:]:
+                    self._history.append(row)
 
     # ── Public API ────────────────────────────────────────────────────────────
 
     def log(self, emotion: str, confidence: float) -> None:
         """Buffer a mood entry. Flushes automatically when buffer is full."""
-        row = [
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            emotion,
-            f"{confidence:.1f}",
-        ]
+        time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        conf_str = f"{confidence:.1f}"
+        
+        row_list = [time_str, emotion, conf_str]
+        row_dict = {"time": time_str, "emotion": emotion, "confidence": conf_str}
+        
         with self._lock:
-            self._buffer.append(row)
+            self._buffer.append(row_list)
+            self._history.append(row_dict)
             if len(self._buffer) >= LOG_BUFFER_SIZE:
                 self._flush_locked()
 
@@ -52,13 +59,9 @@ class MoodLogger:
             self._flush_locked()
 
     def get_history(self) -> list:
-        """Return the last HISTORY_DISPLAY mood entries."""
-        self.flush()   # Ensure latest buffered entries are visible
-        if not os.path.exists(self._file):
-            return []
-        with open(self._file, "r", encoding="utf-8") as f:
-            rows = list(csv.DictReader(f))
-        return rows[-HISTORY_DISPLAY:]
+        """Return the last HISTORY_DISPLAY mood entries from memory cache."""
+        with self._lock:
+            return list(self._history)
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
