@@ -41,7 +41,7 @@ class MusicManager:
         # Per-emotion last-played timestamps
         self._last_song_times: dict = {}
         self._lock = threading.Lock()
-        self._played_recently: deque = deque(maxlen=10)
+        self._played_recently: dict = {}
         self.current_mood: str | None = None
         self.current_url: str | None = None
 
@@ -63,13 +63,17 @@ class MusicManager:
 
             # Pick a song not played recently
             links = MOOD_SONGS.get(emotion, MOOD_SONGS["neutral"])
-            fresh = [l for l in links if l not in self._played_recently]
+            if emotion not in self._played_recently:
+                self._played_recently[emotion] = deque(maxlen=max(1, len(links) - 1))
+            
+            history = self._played_recently[emotion]
+            fresh = [l for l in links if l not in history]
             if not fresh:
                 fresh = list(links)
-                self._played_recently.clear()
+                history.clear()
 
             chosen = random.choice(fresh)
-            self._played_recently.append(chosen)
+            history.append(chosen)
             self._last_song_times[emotion] = now
             self.current_mood = emotion
             self.current_url = chosen
