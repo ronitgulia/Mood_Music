@@ -317,6 +317,11 @@ class MoodMusicApp(QMainWindow):
         def _do():
             with self._tts_lock:
                 try:
+                    import pythoncom
+                    pythoncom.CoInitialize()
+                except ImportError:
+                    pass
+                try:
                     eng = pyttsx3.init()
                     eng.say(text)
                     eng.runAndWait()
