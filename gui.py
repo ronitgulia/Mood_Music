@@ -135,6 +135,7 @@ class MoodMusicApp(QMainWindow):
         self.logger = MoodLogger()
         self.engine = EmotionEngine(on_confirmed=self._on_confirmed)
         self.voice_enabled = VOICE_ENABLED and TTS_AVAILABLE
+        self._voice_checked = self.voice_enabled
         self._tts_lock = threading.Lock()
         self._prev_confidence: float = 0.0
 
@@ -242,6 +243,7 @@ class MoodMusicApp(QMainWindow):
 
         self.voice_cb = QCheckBox("🔊 Voice announcements")
         self.voice_cb.setChecked(self.voice_enabled)
+        self.voice_cb.stateChanged.connect(self._on_voice_cb_changed)
         self.voice_cb.setStyleSheet(
             "color: #8b949e; font-family: 'Segoe UI'; font-size: 10pt; border: none;"
         )
@@ -295,11 +297,14 @@ class MoodMusicApp(QMainWindow):
 
     # ── Callbacks ─────────────────────────────────────────────────────────────
 
+    def _on_voice_cb_changed(self, state):
+        self._voice_checked = (state == Qt.Checked)
+
     def _on_confirmed(self, emotion: str, confidence: float, scores: dict):
         success, _ = self.music.try_play(emotion)
         if success:
             self.logger.log(emotion, confidence)
-            if self.voice_cb.isChecked() and TTS_AVAILABLE:
+            if self._voice_checked and TTS_AVAILABLE:
                 self._speak(f"You look {emotion}. Playing music for you.")
 
     def _speak(self, text: str):
