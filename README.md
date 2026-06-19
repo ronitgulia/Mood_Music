@@ -39,7 +39,7 @@ Point the camera at your face. The app does the rest.
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
+| Layer | Technology |  
 |---|---|
 | Language | Python 3.10+ |
 | Face Detection | OpenCV DNN (SSD ResNet, TensorFlow) |
