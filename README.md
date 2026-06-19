@@ -161,7 +161,7 @@ Webcam frame (30fps)
 
 ---
 
-## 👨‍💻 Author
+## 👨‍💻 Author 
 
 **Ronit Gulia**
 - GitHub: [@ronitgulia](https://github.com/ronitgulia)
