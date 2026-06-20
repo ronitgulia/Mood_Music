@@ -2,6 +2,7 @@
 
 # 🎵 Mood Music Player
 
+
 ### Real-time emotion detection that plays music matching your mood
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
